@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: payflow_postgres
+    environment:
+      POSTGRES_DB: payflow
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Скрипт инициализации — выполняется один раз при первом старте
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U payflow" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: payflow_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # maxmemory-policy: когда Redis заполнится — удалять самые старые ключи
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  zookeeper:
+    image: bitnamilegacy/zookeeper:3.8.3
+    container_name: payflow_zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnamilegacy/kafka:3.6.1
+    container_name: payflow_kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      # Хранить сообщения 7 дней (для аналитики)
+      KAFKA_CFG_LOG_RETENTION_HOURS: 168
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: payflow_kafka_ui
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8080:8080"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: payflow_clickhouse
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native protocol
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./docker/clickhouse_init.sql:/docker-entrypoint-initdb.d/init.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  postgres_data:
+  clickhouse_data:
