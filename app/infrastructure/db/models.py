@@ -1,9 +1,11 @@
-import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from sqlalchemy import String, DateTime, Enum, Boolean, func
+
+from sqlalchemy import Boolean, DateTime, Enum, String, func
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.core.database import Base
+
 
 class MerchantPlan(str, PyEnum):
     FREE = "free"
@@ -27,10 +29,10 @@ class Merchant(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
-    #Password we store only like bcrypt hash = NEVER not plain text
+    # Password we store only like bcrypt hash = NEVER not plain text
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    #api key using for machine-to-machine authentication
+    # api key using for machine-to-machine authentication
     # (when merchant make queue from his backend`s)
 
     api_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
@@ -55,7 +57,7 @@ class Merchant(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    #schema_name: like "merchant_abc123"
+    # schema_name: like "merchant_abc123"
     # For this name we create search_path
 
     schema_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)

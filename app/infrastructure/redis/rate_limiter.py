@@ -1,10 +1,12 @@
-import time 
+import time
+
 import redis.asyncio as aioredis
+
 from app.core.config import get_settings
 
 settings = get_settings()
 
-#Limits for plans: {plan: (requests_per_minute, requests_per_day)}
+# Limits for plans: {plan: (requests_per_minute, requests_per_day)}
 PLAN_LIMITS = {
     "free": (100, 1_000),
     "pro": (1_000, 50_000),
@@ -13,7 +15,7 @@ PLAN_LIMITS = {
 
 
 class SlidingWindowRateLimiter:
-    f"""
+    """
     Sliding Window Rate Limiter on base Redis ZSET (Sorted Set)
 
     Algorithm:
@@ -28,16 +30,14 @@ class SlidingWindowRateLimiter:
 
     Why "sliding" but not "fixed"?
     Fixed window: resets each minute evenly
-    Problem: at the end of the minute + the begging of the next = 2x limit for 2 SetCommands
+    Problem: end of one minute + start of the next can allow a burst.
 
-    Sliding window: always looking "last N seconds" regarding the current modify_components
+    Sliding window always evaluates the previous N seconds from now.
     Not "boundary exploit"
     """
 
-
     def __init__(self):
         self.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
-
 
     async def is_allowed(
         self,
@@ -47,7 +47,7 @@ class SlidingWindowRateLimiter:
     ) -> tuple[bool, int]:
         """
         Проверяет разрешён ли запрос.
-        
+
         Returns:
             (allowed: bool, requests_remaining: int)
         """
@@ -61,24 +61,23 @@ class SlidingWindowRateLimiter:
             limit = per_day
             window_seconds = 86400
 
-            if limit is None:
-                return True, 999999  # Enterprise — без ограничений
+        if limit is None:
+            return True, 999999  # Enterprise — без ограничений
 
-            key = f"rate:{merchant_id}:{window}"
-            now = time.time()
-            window_start = now - window_seconds
+        key = f"rate:{merchant_id}:{window}"
+        now = time.time()
+        window_start = now - window_seconds
 
-            
-            #Using Redis pipeline for atomic execution
-        #All commands in one operation(protection for race condition)
+        # Using Redis pipeline for atomic execution
+        # All commands in one operation(protection for race condition)
         async with self.redis.pipeline() as pipe:
-            #Deleting old requests (ZREMRANGEBYSCORE)
+            # Deleting old requests (ZREMRANGEBYSCORE)
             pipe.zremrangebyscore(key, "-inf", window_start)
-            #Counting requests in ZSET (ZCARD)
+            # Counting requests in ZSET (ZCARD)
             pipe.zcard(key)
-            #Adding current request (ZADD)
+            # Adding current request (ZADD)
             pipe.zadd(key, {str(now): now})
-            #Installing TTL for key automatically deleting
+            # Installing TTL for key automatically deleting
             pipe.expire(key, window_seconds * 2)
 
             results = await pipe.execute()
@@ -92,5 +91,3 @@ class SlidingWindowRateLimiter:
 
     async def close(self):
         await self.redis.aclose()
-
-

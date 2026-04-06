@@ -1,9 +1,9 @@
 import secrets
-import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from jose import jwt, JWTError
+
 import bcrypt
+from jose import JWTError, jwt
 
 from app.core.config import get_settings
 
@@ -16,12 +16,12 @@ def hash_password(password: str) -> str:
     """
     Hashing password using bcrypt
     Always returning diff hash (bcrypt adds salt automatically)
-    This protects by rainbow table attack 
+    This protects by rainbow table attack
 
     """
     salt = bcrypt.gensalt()
-    pwd_bytes = password.encode('utf-8')
-    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+    pwd_bytes = password.encode("utf-8")
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -29,8 +29,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Checking password without his "decryptions" - bcrypt one-sided
     We hashing plain_password and compare with hashed_password.
     """
-    pwd_bytes = plain_password.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
+    pwd_bytes = plain_password.encode("utf-8")
+    hashed_bytes = hashed_password.encode("utf-8")
     return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
@@ -39,7 +39,7 @@ def generate_api_key() -> str:
     Generating cryptographically secure API key
     secrets.token_hex(32) = 64 symbols hex, 256 bits entropy
 
-    Using for machine-to-machine authentication (when merchant make queue from his backend)
+    Used for machine-to-machine authentication between services.
     """
     return secrets.token_hex(32)
 
@@ -58,9 +58,7 @@ def create_access_token(data: dict[str, Any]) -> str:
     but cant modify it without breaking signature
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire, "type": "access"})
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 
@@ -72,12 +70,9 @@ def create_refresh_token(data: dict[str, Any]) -> str:
     Need to store it safely (httpOnly or secure storage)
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     to_encode.update({"exp": expire, "type": "refresh"})
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
-
 
 
 def decode_token(token: str) -> dict[str, Any]:
@@ -86,11 +81,8 @@ def decode_token(token: str) -> dict[str, Any]:
     jose automatically checking signature and expiration time
     By invalid token we raise JWTError
     """
-    try: 
+    try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         return payload
     except JWTError as e:
         raise ValueError(f"Invalid token: {e}") from e
-
-        
-

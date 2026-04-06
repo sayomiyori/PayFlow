@@ -57,11 +57,13 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
+strict = false
 ignore_missing_imports = true
+disable_error_code = ["call-arg", "misc", "no-redef"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,15 +1,17 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """
     Все настройки приложения загружаются из переменных окружения.
     pydantic-settings автоматически читает .env файл.
-    
+
     lru_cache гарантирует что Settings создаётся один раз —
     это важно для производительности (не читать файл при каждом запросе).
     """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

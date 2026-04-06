@@ -1,9 +1,7 @@
-from email.policy import HTTP
-from botocore.auth import NoAuthTokenError
 from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token
@@ -17,28 +15,28 @@ rate_limiter = SlidingWindowRateLimiter()
 async def get_current_merchant(
     credentials: HTTPAuthorizationCredentials = Security(security),
     db: AsyncSession = Depends(get_db),
-)-> Merchant:
+) -> Merchant:
     """
     FastAPI dependency - getting current merchant from JWT token
 
-    Using: 
+    Using:
         @router.get("/payments)
         async def get_payments(
             merchant: Merchant = Depends(get_current_merchant),
         ):
             ...
-    
-    FastAPI will automatically transmits Authorization header to credentials
-    If token is invalid, FastAPI will raise 401 Unauthorized error before endpoint execution
+
+    FastAPI automatically reads Authorization header into credentials.
+    If token is invalid, endpoint returns 401 before handler execution.
     """
-    try: 
+    try:
         payload = decode_token(credentials.credentials)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalide or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from err
 
     merchant_id = payload.get("sub")
     if not merchant_id:
@@ -47,21 +45,18 @@ async def get_current_merchant(
             detail="Invalid token payload",
         )
 
-    result = await db.execute(
-        select(Merchant).where(Merchant.id == merchant_id)
-    )
+    result = await db.execute(select(Merchant).where(Merchant.id == merchant_id))
     merchant = result.scalar_one_or_none()
 
     if not merchant or not merchant.is_active:
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Merchant not found or deactivated",
         )
 
-        return merchant
+    return merchant
 
 
-    
 async def check_rate_limit(
     merchant: Merchant = Depends(get_current_merchant),
 ):
@@ -69,8 +64,8 @@ async def check_rate_limit(
     Dependency for rate limiting
     Checking limits per minute
 
-    Adding to the endpoints wich need to be rate limited:
-        @router.post("/payments", dependencise=[Depends(check_rate_limit)])
+    Add to endpoints that should be rate limited:
+        @router.post("/payments", dependencies=[Depends(check_rate_limit)])
     """
     allowed, remaining = await rate_limiter.is_allowed(
         merchant_id=str(merchant.id),
@@ -85,7 +80,7 @@ async def check_rate_limit(
             headers={
                 "X-RateLimit-Remaining": "0",
                 "Retry-After": "60",
-                },
+            },
         )
 
     return merchant

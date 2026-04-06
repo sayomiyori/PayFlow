@@ -1,9 +1,10 @@
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
     AsyncSession,
     async_sessionmaker,
+    create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -34,17 +35,18 @@ class Base(DeclarativeBase):
     Все таблицы наследуются от него — это нужно Alembic
     для автоматического обнаружения изменений в схеме.
     """
+
     pass
 
 
 async def get_db() -> AsyncSession:
     """
     Dependency для FastAPI. Использование:
-    
+
         @router.get("/")
         async def endpoint(db: AsyncSession = Depends(get_db)):
             ...
-    
+
     async with гарантирует закрытие сессии даже при ошибке.
     """
     async with AsyncSessionLocal() as session:

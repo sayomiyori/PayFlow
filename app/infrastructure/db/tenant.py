@@ -1,7 +1,6 @@
-import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 import structlog
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -9,7 +8,6 @@ logger = structlog.get_logger()
 async def create_tenant_schema(
     db: AsyncSession,
     schema_name: str,
-
 ) -> None:
     """
     Creating PostgreSQL schema for a new merchant
@@ -23,20 +21,17 @@ async def create_tenant_schema(
     log = logger.bind(schema_name=schema_name)
     log.info("creating_tenant_schema")
 
-    #CREATE SCHEMA IF NOT EXISTS - idempotent operation
+    # CREATE SCHEMA IF NOT EXISTS - idempotent operation
     # (u can call it many times without errors)
-    await db.execute(
-        text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
-    )
+    await db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
 
-    #Creating base tables inside new schema
-    #Installing search_path for CREATE TABLE to create tables in necessary schema
-    await db.execute(
-        text(f"SET search_path TO {schema_name}")
-    )
+    # Creating base tables inside new schema
+    # Installing search_path for CREATE TABLE to create tables in necessary schema
+    await db.execute(text(f"SET search_path TO {schema_name}"))
 
-    #Payment table
-    await db.execute(text("""
+    # Payment table
+    await db.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS payments (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             amount NUMERIC(12, 2) NOT NULL,
@@ -49,11 +44,12 @@ async def create_tenant_schema(
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    """))
+    """)
+    )
 
-
-    #Outbox table - main for Outbox Patter (Phase 3)
-    await db.execute(text("""
+    # Outbox table - main for Outbox Patter (Phase 3)
+    await db.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS outbox (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         event_type VARCHAR(100) NOT NULL,
@@ -63,18 +59,20 @@ async def create_tenant_schema(
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         processed_at TIMESTAMPTZ
         )
-    """))
+    """)
+    )
 
-
-    #Index for fast search unreading records
-    #Outbox worker reading WHERE processed = FALSE
-    await db.execute(text("""
+    # Index for fast search unreading records
+    # Outbox worker reading WHERE processed = FALSE
+    await db.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_outbox_unprocessed
         ON outbox (created_at)
         WHERE processed = FALSE
-    """))
+    """)
+    )
 
-    #Taking back search_path in public
+    # Taking back search_path in public
     await db.execute(text("SET search_path to public"))
 
     log.info("tenant_schema_created")
@@ -87,7 +85,7 @@ async def get_tenant_session(
     """
     "Switching" session on tanent schema
 
-    After this call all requests in this session will be going in to merchant-specific table
+    After this call, all requests in this session use merchant-specific tables.
 
     Using:
         async with get_tenant_session(db, merchant.schema_name) as tenant_db:
@@ -96,4 +94,3 @@ async def get_tenant_session(
 
     await db.execute(text(f"SET search_path TO {schema_name}, public"))
     return db
-

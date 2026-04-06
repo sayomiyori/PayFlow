@@ -22,7 +22,7 @@ dev:
 lint:
 	ruff check app tests
 	ruff format --check app tests
-	mypy app
+	mypy -p app
 
 # Автоматически исправить стиль кода
 format:
