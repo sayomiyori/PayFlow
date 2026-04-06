@@ -1,7 +1,17 @@
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
+from jose import jwt
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies.auth import rate_limiter
+from app.core.config import get_settings
+from app.core.security import ALGORITHM
+
+settings = get_settings()
 
 
 @pytest.mark.asyncio
@@ -96,6 +106,33 @@ async def test_login_returns_tokens(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_token_payload_sub_matches_merchant_id(client: AsyncClient):
+    register = await client.post(
+        "/auth/register",
+        json={
+            "name": "Token Match",
+            "email": "token_match@test.com",
+            "password": "TestPass123!",
+        },
+    )
+    assert register.status_code == 201
+    merchant_id = register.json()["merchant_id"]
+
+    login = await client.post(
+        "/auth/token",
+        json={
+            "email": "token_match@test.com",
+            "password": "TestPass123!",
+        },
+    )
+    assert login.status_code == 200
+    access_token = login.json()["access_token"]
+    payload = jwt.decode(access_token, settings.secret_key, algorithms=[ALGORITHM])
+
+    assert payload["sub"] == merchant_id
+
+
+@pytest.mark.asyncio
 async def test_login_wrong_password_returns_401(client: AsyncClient):
     await client.post(
         "/auth/register",
@@ -156,3 +193,57 @@ async def test_tenant_isolation(client: AsyncClient, db_session: AsyncSession):
             {"name": schema},
         )
         assert result.scalar_one_or_none() is not None
+
+
+@pytest.mark.asyncio
+async def test_expired_token_returns_401(client: AsyncClient):
+    expired_token = jwt.encode(
+        {
+            "sub": "expired-user",
+            "type": "access",
+            "exp": datetime.now(UTC) - timedelta(minutes=1),
+        },
+        settings.secret_key,
+        algorithm=ALGORITHM,
+    )
+
+    response = await client.get(
+        "/protected/me",
+        headers={"Authorization": f"Bearer {expired_token}"},
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_exceeded_returns_429(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    register = await client.post(
+        "/auth/register",
+        json={
+            "name": "Rate Limit",
+            "email": "rate_limit@test.com",
+            "password": "TestPass123!",
+        },
+    )
+    assert register.status_code == 201
+
+    login = await client.post(
+        "/auth/token",
+        json={
+            "email": "rate_limit@test.com",
+            "password": "TestPass123!",
+        },
+    )
+    assert login.status_code == 200
+    access_token = login.json()["access_token"]
+
+    monkeypatch.setattr(rate_limiter, "is_allowed", AsyncMock(return_value=(False, 0)))
+
+    response = await client.get(
+        "/protected/limited-ping",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == 429

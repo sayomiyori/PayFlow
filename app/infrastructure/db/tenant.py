@@ -1,12 +1,21 @@
+import asyncio
+import sys
+from pathlib import Path
+
 import structlog
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 logger = structlog.get_logger()
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def schema_name_from_merchant_id(merchant_id: str) -> str:
+    return f"merchant_{merchant_id.replace('-', '')}"
 
 
 async def create_tenant_schema(
-    db: AsyncSession,
+    _db: AsyncSession,
     schema_name: str,
 ) -> None:
     """
@@ -21,66 +30,43 @@ async def create_tenant_schema(
     log = logger.bind(schema_name=schema_name)
     log.info("creating_tenant_schema")
 
-    # CREATE SCHEMA IF NOT EXISTS - idempotent operation
-    # (u can call it many times without errors)
-    await db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+    bind = _db.get_bind()
+    url_obj = bind.url if hasattr(bind, "url") else bind.engine.url
+    db_url = url_obj.render_as_string(hide_password=False)
 
-    # Creating base tables inside new schema
-    # Installing search_path for CREATE TABLE to create tables in necessary schema
-    await db.execute(text(f"SET search_path TO {schema_name}"))
+    # Ensure schema exists before Alembic creates tenant-scoped version table.
+    schema_engine = create_async_engine(db_url)
+    async with schema_engine.begin() as connection:
+        await connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+    await schema_engine.dispose()
 
-    # Payment table
-    await db.execute(
-        text("""
-        CREATE TABLE IF NOT EXISTS payments (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            amount NUMERIC(12, 2) NOT NULL,
-            currency VARCHAR(3) NOT NULL DEFAULT 'RUB',
-            status VARCHAR(20) NOT NULL DEFAULT 'pending',
-            idempotency_key VARCHAR(255) UNIQUE,
-            provider VARCHAR(20) NOT NULL DEFAULT 'yukassa',
-            provider_payment_id VARCHAR(255),
-            metadata JSONB DEFAULT '{}',
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "alembic",
+        "-x",
+        f"tenant_schema={schema_name}",
+        "-x",
+        f"db_url={db_url}",
+        "upgrade",
+        "head",
+        cwd=str(PROJECT_ROOT),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
+        raise RuntimeError(
+            "Tenant migration failed: "
+            f"{stderr.decode().strip() or stdout.decode().strip()}"
         )
-    """)
-    )
-
-    # Outbox table - main for Outbox Patter (Phase 3)
-    await db.execute(
-        text("""
-        CREATE TABLE IF NOT EXISTS outbox (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        event_type VARCHAR(100) NOT NULL,
-        aggregate_id UUID NOT NULL,
-        payload JSONB NOT NULL,
-        processed BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        processed_at TIMESTAMPTZ
-        )
-    """)
-    )
-
-    # Index for fast search unreading records
-    # Outbox worker reading WHERE processed = FALSE
-    await db.execute(
-        text("""
-        CREATE INDEX IF NOT EXISTS idx_outbox_unprocessed
-        ON outbox (created_at)
-        WHERE processed = FALSE
-    """)
-    )
-
-    # Taking back search_path in public
-    await db.execute(text("SET search_path to public"))
 
     log.info("tenant_schema_created")
 
 
 async def get_tenant_session(
     db: AsyncSession,
-    schema_name: str,
+    merchant_id: str,
 ) -> AsyncSession:
     """
     "Switching" session on tanent schema
@@ -92,5 +78,6 @@ async def get_tenant_session(
             payments = await tenant_db.execute(select(Payment))
     """
 
+    schema_name = schema_name_from_merchant_id(merchant_id)
     await db.execute(text(f"SET search_path TO {schema_name}, public"))
     return db

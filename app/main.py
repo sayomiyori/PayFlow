@@ -5,10 +5,13 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
+from starlette.requests import Request
 
-from app.api.routers import auth, health
+from app.api.routers import auth, health, protected
 from app.core.config import get_settings
 from app.core.database import engine
+from app.core.security import decode_token
+from app.infrastructure.db.tenant import schema_name_from_merchant_id
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -60,6 +63,25 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(auth.router)
+    app.include_router(protected.router)
+
+    @app.middleware("http")
+    async def inject_tenant_context(request: Request, call_next):
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            try:
+                payload = decode_token(token)
+                merchant_id = str(payload.get("sub", ""))
+                if merchant_id:
+                    request.state.tenant_merchant_id = merchant_id
+                    request.state.tenant_schema = schema_name_from_merchant_id(
+                        merchant_id
+                    )
+            except ValueError:
+                # Token validation is enforced by route dependencies.
+                pass
+        return await call_next(request)
 
     # Prometheus metrics available at /metrics
     # Prometheus server will scrape these metrics

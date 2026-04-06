@@ -1,0 +1,134 @@
+import uuid
+from datetime import datetime
+from enum import Enum as PyEnum
+from typing import Any
+
+from sqlalchemy import Boolean, DateTime, Numeric, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class TenantBase(DeclarativeBase):
+    """
+    Separate Base for tenant-specific models
+
+    Why we dont use common Base?
+    Bcs tenant models living in different schemas
+    And we dont want to Alembic try create they are in public schema
+    """
+
+    pass
+
+
+class PaymentStatus(str, PyEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class PaymentProvider(str, PyEnum):
+    YUKASSA = "yukassa"
+    STRIPE = "stripe"
+    MANUAL = "manual"  # for test
+
+
+class Payment(TenantBase):
+    """
+    Table for payments - living in tenant schema
+    __table_args__ intentionally doesnt contain schema=
+    Bcs we manage search_path dynamically
+    """
+
+    __tablename__ = "payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(
+        String(3),
+        default="RUB",
+        nullable=False,
+    )
+    status: Mapped[PaymentStatus] = mapped_column(
+        String(20),
+        default=PaymentStatus.PENDING,
+        nullable=False,
+    )
+
+    # Idempotency key for prevent double payments
+    # If request repeated with the same key - return existing payment
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
+
+    provider: Mapped[PaymentProvider] = mapped_column(
+        String(20),
+        default=PaymentProvider.YUKASSA,
+        nullable=False,
+    )
+
+    # Payments ID in the external system (Yukassa, Stripe, etc.)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Arbitary metadata from merchant
+    metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, default=dict, nullable=False
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class Outbox(TenantBase):
+    """
+    Outbox table - events buffer for Kafka
+
+    Principe: sending in outbox in the same transaction as well business-object
+    Worker reading itbox and public into kafka
+    """
+
+    __tablename__ = "outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+
+    event_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    aggregate_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
+    payload: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+    )
+    processed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

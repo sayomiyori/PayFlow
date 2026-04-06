@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.infrastructure.db.models import Merchant
+from app.infrastructure.db.tenant import get_tenant_session
 from app.infrastructure.redis.rate_limiter import SlidingWindowRateLimiter
 
 security = HTTPBearer()
@@ -84,3 +85,10 @@ async def check_rate_limit(
         )
 
     return merchant
+
+
+async def inject_tenant(
+    merchant: Merchant = Depends(get_current_merchant),
+    db: AsyncSession = Depends(get_db),
+) -> AsyncSession:
+    return await get_tenant_session(db, str(merchant.id))
