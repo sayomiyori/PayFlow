@@ -1,7 +1,5 @@
 import time 
-from botocore.useragent import modify_components
 import redis.asyncio as aioredis
-from redis.commands.core import SetCommands
 from app.core.config import get_settings
 
 settings = get_settings()

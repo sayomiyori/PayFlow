@@ -3,18 +3,11 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from jose import jwt, JWTError
-from passlib.context import CryptContext
-
+import bcrypt
 
 from app.core.config import get_settings
 
 settings = get_settings()
-
-#CryptContext manages passwords hashing 
-#bcrypt standart for hashing passwords (slowly and securely - security for brute-force)
-#dprecated="auto": automatically updating old hashes by login
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
 
@@ -26,7 +19,9 @@ def hash_password(password: str) -> str:
     This protects by rainbow table attack 
 
     """
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    pwd_bytes = password.encode('utf-8')
+    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -34,7 +29,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Checking password without his "decryptions" - bcrypt one-sided
     We hashing plain_password and compare with hashed_password.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    pwd_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
 def generate_api_key() -> str:

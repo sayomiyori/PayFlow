@@ -20,11 +20,12 @@ class Merchant(Base):
     They gives type hints and tells mypy checks types
     """
 
-    ___tablename__ = "merchants"
+    __tablename__ = "merchants"
     __table_args__ = {"schema": "public"}
 
-    id: Mapped[str] = mapped_column(String(255), nullable=False)
-    email: Mapped[str] = mapped_column(Strng(255), unique=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(255), primary_key=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
     #Password we store only like bcrypt hash = NEVER not plain text
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)

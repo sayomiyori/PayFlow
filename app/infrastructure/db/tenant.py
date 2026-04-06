@@ -6,11 +6,10 @@ import structlog
 logger = structlog.get_logger()
 
 
-
 async def create_tenant_schema(
     db: AsyncSession,
     schema_name: str,
-    
+
 ) -> None:
     """
     Creating PostgreSQL schema for a new merchant
@@ -36,7 +35,7 @@ async def create_tenant_schema(
         text(f"SET search_path TO {schema_name}")
     )
 
-    #Payment table 
+    #Payment table
     await db.execute(text("""
         CREATE TABLE IF NOT EXISTS payments (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -58,7 +57,7 @@ async def create_tenant_schema(
         CREATE TABLE IF NOT EXISTS outbox (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         event_type VARCHAR(100) NOT NULL,
-        aggregate_id VARCHER UUID NOT NULL,
+        aggregate_id UUID NOT NULL,
         payload JSONB NOT NULL,
         processed BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -82,7 +81,7 @@ async def create_tenant_schema(
 
 
 async def get_tenant_session(
-    db: AsyncSession, 
+    db: AsyncSession,
     schema_name: str,
 ) -> AsyncSession:
     """
@@ -97,6 +96,4 @@ async def get_tenant_session(
 
     await db.execute(text(f"SET search_path TO {schema_name}, public"))
     return db
-    
-    
-    
+

@@ -8,6 +8,7 @@ from prometheus_client import make_asgi_app
 from app.core.config import get_settings
 from app.core.database import engine
 from app.api.routers import health
+from app.api.routers import auth
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -56,6 +57,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.include_router(auth.router)
 
 
     #Prometheus metrics available at /metrics
