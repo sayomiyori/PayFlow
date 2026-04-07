@@ -86,7 +86,7 @@ def upgrade() -> None:
     )
 
     op.create_table(
-        "events",
+        "outbox",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("event_type", sa.String(length=100), nullable=False),
         sa.Column("aggregate_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -106,8 +106,8 @@ def upgrade() -> None:
     )
 
     op.create_index(
-        "ix_events_unprocessed",
-        "events",
+        "ix_outbox_unprocessed",
+        "outbox",
         ["created_at"],
         unique=False,
         schema=tenant_schema,
@@ -120,7 +120,7 @@ def downgrade() -> None:
     if not tenant_schema:
         return
 
-    op.drop_index("ix_events_unprocessed", table_name="events", schema=tenant_schema)
-    op.drop_table("events", schema=tenant_schema)
+    op.drop_index("ix_outbox_unprocessed", table_name="outbox", schema=tenant_schema)
+    op.drop_table("outbox", schema=tenant_schema)
     op.drop_table("webhooks", schema=tenant_schema)
     op.drop_table("payments", schema=tenant_schema)

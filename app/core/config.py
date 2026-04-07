@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     yukassa_shop_id: str
     yukassa_secret_key: str
     yukassa_webhook_secret: str
+    reconciliation_stuck_seconds: int = 600
 
     # Sentry
     sentry_dsn: str = ""

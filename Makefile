@@ -31,7 +31,12 @@ format:
 
 # Запустить тесты
 test:
-	python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+	python -m pytest $(if $(filter-out $@,$(MAKECMDGOALS)),$(filter-out $@,$(MAKECMDGOALS)),tests/) -v --cov=app --cov-report=html --cov-report=term-missing
+
+# Позволяет передавать путь как аргумент:
+# make test tests/integration/test_webhooks.py
+%:
+	@:
 
 # Запустить только быстрые unit тесты (без Docker контейнеров)
 test-unit:
