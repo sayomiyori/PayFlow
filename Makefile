@@ -1,4 +1,4 @@
-.PHONY: dev test lint migrate docker-up docker-down
+.PHONY: dev test lint migrate docker-up docker-down k8s-deploy k8s-status k8s-logs
 
 # Запустить инфраструктуру (PostgreSQL, Redis, Kafka, ClickHouse)
 docker-up:
@@ -64,3 +64,12 @@ migrate-down:
 # Показать историю миграций
 migrate-history:
 	alembic history --verbose
+
+k8s-deploy:
+	kubectl apply -f k8s/
+
+k8s-status:
+	kubectl get all -n payflow
+
+k8s-logs:
+	kubectl logs -f deployment/payflow-api -n payflow

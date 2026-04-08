@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-celery-beat
+  namespace: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payflow-celery-beat
+  template:
+    metadata:
+      labels:
+        app: payflow-celery-beat
+    spec:
+      containers:
+        - name: celery-beat
+          image: ghcr.io/sayomiyori/payflow:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - app.workers.celery_app.celery_app
+            - beat
+            - --loglevel=info
+          envFrom:
+            - configMapRef:
+                name: payflow-config
+            - secretRef:
+                name: payflow-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-api
+  namespace: payflow
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payflow-api
+  template:
+    metadata:
+      labels:
+        app: payflow-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/sayomiyori/payflow:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8088
+          envFrom:
+            - configMapRef:
+                name: payflow-config
+            - secretRef:
+                name: payflow-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            periodSeconds: 10
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            periodSeconds: 30
+            initialDelaySeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
