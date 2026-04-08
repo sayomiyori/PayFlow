@@ -13,6 +13,12 @@ docker-down:
 docker-logs:
 	docker-compose logs -f
 
+consumer-up:
+	docker-compose up -d clickhouse-consumer
+
+prometheus-up:
+	docker-compose up -d prometheus
+
 # Запустить приложение в dev режиме
 # --reload: автоматически перезапускать при изменении кода
 dev:

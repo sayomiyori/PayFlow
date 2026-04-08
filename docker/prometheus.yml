@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "clickhouse-consumer"
+    static_configs:
+      - targets: ["clickhouse-consumer:9108"]
+
+  - job_name: "payflow-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8088"]

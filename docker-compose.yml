@@ -86,6 +86,44 @@ services:
         soft: 262144
         hard: 262144
 
+  clickhouse-consumer:
+    image: python:3.12-slim
+    container_name: payflow_clickhouse_consumer
+    working_dir: /app
+    depends_on:
+      - kafka
+      - clickhouse
+    volumes:
+      - ./:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://payflow:payflow@postgres:5432/payflow
+      DATABASE_URL_SYNC: postgresql+psycopg2://payflow:payflow@postgres:5432/payflow
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_DB: payflow_analytics
+      SECRET_KEY: dev-secret
+      YUKASSA_SHOP_ID: dev-shop
+      YUKASSA_SECRET_KEY: dev-secret
+      YUKASSA_WEBHOOK_SECRET: dev-webhook-secret
+      CLICKHOUSE_CONSUMER_METRICS_PORT: 9108
+    command: >
+      sh -c "pip install --no-cache-dir aiokafka clickhouse-driver prometheus-client pydantic-settings &&
+             python -m app.workers.clickhouse_consumer"
+    ports:
+      - "9108:9108"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: payflow_prometheus
+    depends_on:
+      - clickhouse-consumer
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
 volumes:
   postgres_data:
   clickhouse_data:

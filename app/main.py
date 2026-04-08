@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from starlette.requests import Request
 
-from app.api.routers import auth, health, payments, protected, webhooks
+from app.api.routers import analytics, auth, health, payments, protected, webhooks
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.security import decode_token
@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(payments.router)
     app.include_router(protected.router)
     app.include_router(webhooks.router)
+    app.include_router(analytics.router)
 
     @app.middleware("http")
     async def inject_tenant_context(request: Request, call_next):
