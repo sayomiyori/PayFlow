@@ -96,10 +96,16 @@ All production manifests are in `k8s/`:
 
 GitHub Actions workflow: `.github/workflows/ci.yml`
 
-- `lint`: `ruff check` + `mypy --strict`
+- `lint`: `ruff check` + `mypy -p app` (как в локальном `Makefile`)
 - `test`: `pytest` with PostgreSQL/Kafka/Redis services and coverage gate `>= 80%`
-- `build`: Docker build + push to GHCR
-- `deploy` (main only): `kubectl apply -f k8s/`
+- `build`: Docker build + push to GHCR (см. корневой `Dockerfile`)
+- `deploy` (main only): `kubectl apply -f k8s/` (если в репозитории не задан `KUBE_CONFIG`, шаг деплоя пропускается)
+
+Локальная сборка образа:
+
+```bash
+docker build -t payflow:local .
+```
 
 ## Screenshots
 
