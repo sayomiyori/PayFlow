@@ -21,9 +21,10 @@ from app.main import app
 from app.workers.reconciliation_worker import run_reconciliation
 
 # [ЧТО] Корень репозитория для subprocess alembic (cwd).
-# [ПОЧЕМУ] Хардкод пути ломает CI на ubuntu (нет /mnt/d/...).
-# [ОСТОРОЖНО] Файл лежит в tests/integration → на два уровня выше корень проекта.
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+# [ПОЧЕМУ] В GHA используем GITHUB_WORKSPACE; локально — два уровня вверх от tests/integration.
+# [ОСТОРОЖНО] Без этого на раннере нет путей вида /mnt/d/... из WSL.
+_github_ws = os.environ.get("GITHUB_WORKSPACE")
+_REPO_ROOT = Path(_github_ws) if _github_ws else Path(__file__).resolve().parents[2]
 
 
 def _to_asyncpg_url(sync_url: str) -> str:
