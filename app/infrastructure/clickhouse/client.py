@@ -83,7 +83,11 @@ class ClickHouseEventStore:
         since: datetime,
         granularity: str,
     ) -> list[dict[str, Any]]:
-        bucket_expr = "toStartOfHour(created_at)" if granularity == "hour" else "toDate(created_at)"
+        bucket_expr = (
+            "toStartOfHour(created_at)"
+            if granularity == "hour"
+            else "toDate(created_at)"
+        )
         rows = await asyncio.to_thread(
             self._client.execute,
             (
@@ -100,14 +104,18 @@ class ClickHouseEventStore:
         )
         return [
             {
-                "bucket": bucket if isinstance(bucket, datetime) else datetime.combine(bucket, datetime.min.time(), tzinfo=UTC),
+                "bucket": bucket
+                if isinstance(bucket, datetime)
+                else datetime.combine(bucket, datetime.min.time(), tzinfo=UTC),
                 "total_volume": total_volume,
                 "total_count": int(total_count),
             }
             for bucket, total_volume, total_count in rows
         ]
 
-    async def by_currency(self, merchant_id: str, since: datetime) -> list[dict[str, Any]]:
+    async def by_currency(
+        self, merchant_id: str, since: datetime
+    ) -> list[dict[str, Any]]:
         rows = await asyncio.to_thread(
             self._client.execute,
             (
@@ -120,6 +128,10 @@ class ClickHouseEventStore:
             {"merchant_id": merchant_id, "since": since},
         )
         return [
-            {"currency": currency, "total_volume": total_volume, "total_count": int(total_count)}
+            {
+                "currency": currency,
+                "total_volume": total_volume,
+                "total_count": int(total_count),
+            }
             for currency, total_volume, total_count in rows
         ]

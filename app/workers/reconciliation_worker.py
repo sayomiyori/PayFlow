@@ -28,7 +28,9 @@ async def _fetch_status_from_mock(
     # [ЧТО] Забирает статус платежа через mock endpoint ЮKassa с помощью httpx.AsyncClient.
     # [ПОЧЕМУ] Так мы используем тот же HTTP-контракт, что и реальный провайдер, а не прямой вызов БД.
     # [ОСТОРОЖНО] При росте нагрузки лучше переключить на отдельный HTTP-клиент к внешнему URL, не в ASGITransport.
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get(
             f"/mock/yukassa/status/{provider_payment_id}",
             params={"merchant_id": merchant_id},
@@ -44,9 +46,13 @@ async def run_reconciliation() -> int:
     # [ПОЧЕМУ] Это закрывает дыры доставки webhook-ов и не оставляет платежи в промежуточном состоянии навсегда.
     # [ОСТОРОЖНО] Нужна идемпотентность: один и тот же платеж может попасть в несколько циклов worker-а.
     engine = create_async_engine(settings.database_url)
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     corrected = 0
-    threshold = datetime.now(UTC) - timedelta(seconds=settings.reconciliation_stuck_seconds)
+    threshold = datetime.now(UTC) - timedelta(
+        seconds=settings.reconciliation_stuck_seconds
+    )
 
     try:
         async with session_factory() as db:
@@ -56,13 +62,17 @@ async def run_reconciliation() -> int:
             async with session_factory() as db:
                 tenant_db = await get_tenant_session(db, merchant.id)
                 stuck = (
-                    await tenant_db.execute(
-                        select(Payment).where(
-                            (Payment.status == PaymentStatus.PROCESSING)
-                            & (Payment.updated_at < threshold)
+                    (
+                        await tenant_db.execute(
+                            select(Payment).where(
+                                (Payment.status == PaymentStatus.PROCESSING)
+                                & (Payment.updated_at < threshold)
+                            )
                         )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
 
                 for payment in stuck:
                     if not payment.provider_payment_id:

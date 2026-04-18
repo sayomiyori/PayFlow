@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from enum import Enum as PyEnum
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Numeric, String, func
@@ -20,7 +20,7 @@ class TenantBase(DeclarativeBase):
     pass
 
 
-class PaymentStatus(str, PyEnum):
+class PaymentStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -28,7 +28,7 @@ class PaymentStatus(str, PyEnum):
     CANCELLED = "cancelled"
 
 
-class PaymentProvider(str, PyEnum):
+class PaymentProvider(StrEnum):
     YUKASSA = "yukassa"
     STRIPE = "stripe"
     MANUAL = "manual"  # for test
@@ -160,7 +160,9 @@ class WebhookLog(TenantBase):
     source: Mapped[str] = mapped_column(String(50), nullable=False)
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    signature_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    signature_valid: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="received")
     error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -50,7 +50,9 @@ def _extract_row(raw_payload: bytes) -> dict[str, Any]:
         "event_type": str(event.get("event_type", "unknown")),
         "amount": _safe_decimal(payload.get("amount", "0")),
         "currency": str(payload.get("currency", "UNK")),
-        "status": str(payload.get("status", "unknown")).replace("PaymentStatus.", "").lower(),
+        "status": str(payload.get("status", "unknown"))
+        .replace("PaymentStatus.", "")
+        .lower(),
         "created_at": datetime.fromisoformat(created_at.replace("Z", "+00:00")),
     }
 

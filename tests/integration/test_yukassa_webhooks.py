@@ -5,6 +5,7 @@ import os
 import subprocess
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -18,6 +19,11 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.main import app
 from app.workers.reconciliation_worker import run_reconciliation
+
+# [ЧТО] Корень репозитория для subprocess alembic (cwd).
+# [ПОЧЕМУ] Хардкод пути ломает CI на ubuntu (нет /mnt/d/...).
+# [ОСТОРОЖНО] Файл лежит в tests/integration → на два уровня выше корень проекта.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _to_asyncpg_url(sync_url: str) -> str:
@@ -48,7 +54,7 @@ async def test_engine(postgres_container: PostgresContainer):
     subprocess.run(
         ["alembic", "-x", f"db_url={async_url}", "upgrade", "head"],
         check=True,
-        cwd="/mnt/d/Programming/PayFlow",
+        cwd=_REPO_ROOT,
         env=env,
     )
 

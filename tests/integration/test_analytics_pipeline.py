@@ -63,8 +63,12 @@ class _FakeEventStore:
     async def summary(self, merchant_id: str, since: datetime) -> dict[str, Any]:  # noqa: ARG002
         filtered = [row for row in self.rows if row["merchant_id"] == merchant_id]
         total_count = len(filtered)
-        total_volume = sum((Decimal(str(row["amount"])) for row in filtered), Decimal("0"))
-        success_count = len([r for r in filtered if r["status"] in {"completed", "succeeded"}])
+        total_volume = sum(
+            (Decimal(str(row["amount"])) for row in filtered), Decimal("0")
+        )
+        success_count = len(
+            [r for r in filtered if r["status"] in {"completed", "succeeded"}]
+        )
         avg_amount = (total_volume / total_count) if total_count else Decimal("0")
         success_rate = (success_count / total_count) if total_count else 0.0
         return {
@@ -84,7 +88,9 @@ class _FakeEventStore:
         return [
             {
                 "bucket": datetime.now(UTC),
-                "total_volume": sum((Decimal(str(r["amount"])) for r in filtered), Decimal("0")),
+                "total_volume": sum(
+                    (Decimal(str(r["amount"])) for r in filtered), Decimal("0")
+                ),
                 "total_count": len(filtered),
             }
         ]
@@ -95,7 +101,9 @@ class _FakeEventStore:
         counts: dict[str, int] = {}
         for row in filtered:
             currency = str(row["currency"])
-            totals[currency] = totals.get(currency, Decimal("0")) + Decimal(str(row["amount"]))
+            totals[currency] = totals.get(currency, Decimal("0")) + Decimal(
+                str(row["amount"])
+            )
             counts[currency] = counts.get(currency, 0) + 1
         return [
             {"currency": c, "total_volume": totals[c], "total_count": counts[c]}
@@ -138,7 +146,9 @@ async def test_consumer_batch_insert_1000_events_all_inserted():
 
 
 @pytest.mark.asyncio
-async def test_analytics_tenant_isolation_merchant_a_not_see_b(monkeypatch: pytest.MonkeyPatch):
+async def test_analytics_tenant_isolation_merchant_a_not_see_b(
+    monkeypatch: pytest.MonkeyPatch,
+):
     # [ЧТО] Проверяем tenant isolation в analytics API: каждый merchant видит только свои агрегаты.
     # [ПОЧЕМУ] merchant_id в WHERE — ключевой барьер изоляции в общем аналитическом хранилище.
     # [ОСТОРОЖНО] При любом рефакторинге store запросов этот тест должен оставаться регрессионным.
@@ -178,7 +188,9 @@ async def test_analytics_tenant_isolation_merchant_a_not_see_b(monkeypatch: pyte
         return SimpleNamespace(id="merchant_a")
 
     app.dependency_overrides[get_current_merchant] = merchant_a_dep
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/analytics/by_currency?period=7d")
         assert response.status_code == 200
         body = response.json()

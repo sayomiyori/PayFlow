@@ -16,7 +16,12 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.infrastructure.db.models import Merchant
 from app.infrastructure.db.tenant import get_tenant_session
-from app.infrastructure.db.tenant_models import Outbox, Payment, PaymentStatus, WebhookLog
+from app.infrastructure.db.tenant_models import (
+    Outbox,
+    Payment,
+    PaymentStatus,
+    WebhookLog,
+)
 
 router = APIRouter(tags=["webhooks"])
 settings = get_settings()
@@ -84,7 +89,9 @@ def _resolve_payment_status(raw_status: str) -> PaymentStatus:
         "failed": PaymentStatus.FAILED,
     }
     if normalized not in mapping:
-        raise HTTPException(status_code=400, detail=f"Unsupported payment status: {raw_status}")
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported payment status: {raw_status}"
+        )
     return mapping[normalized]
 
 
@@ -146,9 +153,13 @@ async def receive_yukassa_webhook(
 
     merchant_id = parsed_payload.object.metadata.get("merchant_id")
     if not merchant_id:
-        raise HTTPException(status_code=400, detail="merchant_id missing in webhook metadata")
+        raise HTTPException(
+            status_code=400, detail="merchant_id missing in webhook metadata"
+        )
 
-    merchant_result = await db.execute(select(Merchant).where(Merchant.id == str(merchant_id)))
+    merchant_result = await db.execute(
+        select(Merchant).where(Merchant.id == str(merchant_id))
+    )
     merchant = merchant_result.scalar_one_or_none()
     if merchant is None:
         raise HTTPException(status_code=404, detail="Merchant not found")
@@ -187,7 +198,9 @@ async def receive_yukassa_webhook(
         webhook_log.status = "failed"
         webhook_log.error_message = str(exc)
         await tenant_db.commit()
-        raise HTTPException(status_code=500, detail="Webhook processing failed") from exc
+        raise HTTPException(
+            status_code=500, detail="Webhook processing failed"
+        ) from exc
 
 
 @router.get("/webhooks/{webhook_id}/replay")
@@ -196,12 +209,16 @@ async def replay_webhook(
     tenant_db: AsyncSession = Depends(inject_tenant),
     _merchant: Merchant = Depends(get_current_merchant),
 ):
-    webhook_result = await tenant_db.execute(select(WebhookLog).where(WebhookLog.id == webhook_id))
+    webhook_result = await tenant_db.execute(
+        select(WebhookLog).where(WebhookLog.id == webhook_id)
+    )
     webhook_log = webhook_result.scalar_one_or_none()
     if webhook_log is None:
         raise HTTPException(status_code=404, detail="Webhook not found")
     if not webhook_log.signature_valid:
-        raise HTTPException(status_code=400, detail="Cannot replay webhook with invalid signature")
+        raise HTTPException(
+            status_code=400, detail="Cannot replay webhook with invalid signature"
+        )
 
     try:
         await _process_webhook_payload(tenant_db, webhook_log)
@@ -221,7 +238,9 @@ async def mock_send_yukassa_webhook(
     tenant_db: AsyncSession = Depends(inject_tenant),
     _merchant: Merchant = Depends(get_current_merchant),
 ):
-    payment_result = await tenant_db.execute(select(Payment).where(Payment.id == uuid.UUID(payload.payment_id)))
+    payment_result = await tenant_db.execute(
+        select(Payment).where(Payment.id == uuid.UUID(payload.payment_id))
+    )
     payment = payment_result.scalar_one_or_none()
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -242,11 +261,16 @@ async def mock_send_yukassa_webhook(
         hashlib.sha256,
     ).hexdigest()
 
-    async with AsyncClient(transport=ASGITransport(app=requested_app()), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=requested_app()), base_url="http://test"
+    ) as client:
         response = await client.post(
             "/webhooks/yukassa",
             content=payload_bytes,
-            headers={"X-Webhook-Signature": signature, "Content-Type": "application/json"},
+            headers={
+                "X-Webhook-Signature": signature,
+                "Content-Type": "application/json",
+            },
         )
     return {"status_code": response.status_code, "response": response.json()}
 

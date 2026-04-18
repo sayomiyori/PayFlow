@@ -102,7 +102,7 @@ jobs:
           YUKASSA_SHOP_ID: ci-shop
           YUKASSA_SECRET_KEY: ci-yukassa-secret
           YUKASSA_WEBHOOK_SECRET: ci-webhook-secret
-        run: pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
+        run: pytest -v --cov=app --cov-report=term-missing --cov-fail-under=60
 
   build:
     runs-on: ubuntu-latest

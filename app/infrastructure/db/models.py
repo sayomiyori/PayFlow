@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum as PyEnum
+from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, Enum, String, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 
-class MerchantPlan(str, PyEnum):
+class MerchantPlan(StrEnum):
     FREE = "free"
     PRO = "pro"
     ENTERPRISE = "enterprise"
