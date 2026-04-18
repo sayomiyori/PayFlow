@@ -1,10 +1,12 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from httpx import ASGITransport, AsyncClient
 from prometheus_client import Counter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from starlette.types import ASGIApp
 
 from app.core.config import get_settings
 from app.infrastructure.db.models import Merchant
@@ -29,7 +31,8 @@ async def _fetch_status_from_mock(
     # [ПОЧЕМУ] Так мы используем тот же HTTP-контракт, что и реальный провайдер, а не прямой вызов БД.
     # [ОСТОРОЖНО] При росте нагрузки лучше переключить на отдельный HTTP-клиент к внешнему URL, не в ASGITransport.
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=cast(ASGIApp, app)),
+        base_url="http://test",
     ) as client:
         response = await client.get(
             f"/mock/yukassa/status/{provider_payment_id}",
