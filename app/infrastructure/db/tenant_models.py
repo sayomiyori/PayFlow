@@ -116,7 +116,7 @@ class Outbox(TenantBase):
         UUID(as_uuid=True),
         nullable=False,
     )
-    payload: Mapped[dict] = mapped_column(
+    payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         nullable=False,
     )

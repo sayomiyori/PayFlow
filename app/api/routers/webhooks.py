@@ -3,9 +3,9 @@ import hmac
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
@@ -146,7 +146,7 @@ async def receive_yukassa_webhook(
     request: Request,
     signature: str | None = Header(default=None, alias="X-Webhook-Signature"),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     body = await request.body()
     parsed_payload = YukassaWebhookRequest.model_validate_json(body)
     signature_valid = _verify_signature(body, signature)
@@ -208,7 +208,7 @@ async def replay_webhook(
     webhook_id: uuid.UUID,
     tenant_db: AsyncSession = Depends(inject_tenant),
     _merchant: Merchant = Depends(get_current_merchant),
-):
+) -> dict[str, Any]:
     webhook_result = await tenant_db.execute(
         select(WebhookLog).where(WebhookLog.id == webhook_id)
     )
@@ -237,7 +237,7 @@ async def mock_send_yukassa_webhook(
     payload: MockSendRequest,
     tenant_db: AsyncSession = Depends(inject_tenant),
     _merchant: Merchant = Depends(get_current_merchant),
-):
+) -> dict[str, Any]:
     payment_result = await tenant_db.execute(
         select(Payment).where(Payment.id == uuid.UUID(payload.payment_id))
     )
@@ -262,7 +262,8 @@ async def mock_send_yukassa_webhook(
     ).hexdigest()
 
     async with AsyncClient(
-        transport=ASGITransport(app=requested_app()), base_url="http://test"
+        transport=ASGITransport(app=cast(Any, requested_app())),
+        base_url="http://test",
     ) as client:
         response = await client.post(
             "/webhooks/yukassa",
@@ -280,7 +281,7 @@ async def mock_yukassa_status(
     provider_payment_id: str,
     merchant_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     tenant_db = await get_tenant_session(db, merchant_id)
     payment_result = await tenant_db.execute(
         select(Payment).where(Payment.provider_payment_id == provider_payment_id)
@@ -295,7 +296,7 @@ async def mock_yukassa_status(
     }
 
 
-def requested_app():
-    from app.main import app
+def requested_app() -> FastAPI:
+    from app.main import app as fastapi_app
 
-    return app
+    return fastapi_app

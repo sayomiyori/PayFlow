@@ -60,7 +60,7 @@ async def get_current_merchant(
 
 async def check_rate_limit(
     merchant: Merchant = Depends(get_current_merchant),
-):
+) -> Merchant:
     """
     Dependency for rate limiting
     Checking limits per minute

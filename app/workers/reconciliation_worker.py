@@ -108,6 +108,6 @@ async def run_reconciliation() -> int:
         await engine.dispose()
 
 
-@celery_app.task(name="app.workers.reconciliation_worker.run_reconciliation_task")
+@celery_app.task(name="app.workers.reconciliation_worker.run_reconciliation_task")  # type: ignore[untyped-decorator]
 def run_reconciliation_task() -> int:
     return asyncio.run(run_reconciliation())

@@ -1,6 +1,8 @@
 import time
+from typing import cast
 
 import redis.asyncio as aioredis
+from redis.asyncio import Redis
 
 from app.core.config import get_settings
 
@@ -36,8 +38,14 @@ class SlidingWindowRateLimiter:
     Not "boundary exploit"
     """
 
-    def __init__(self):
-        self.redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    def __init__(self) -> None:
+        self.redis = cast(
+            Redis,
+            aioredis.from_url(  # type: ignore[no-untyped-call]
+                settings.redis_url,
+                decode_responses=True,
+            ),
+        )
 
     async def is_allowed(
         self,
@@ -89,5 +97,5 @@ class SlidingWindowRateLimiter:
 
         return True, limit - current_count - 1
 
-    async def close(self):
+    async def close(self) -> None:
         await self.redis.aclose()

@@ -3,8 +3,13 @@ kind: Deployment
 metadata:
   name: payflow-celery-beat
   namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-celery-beat
+    app.kubernetes.io/component: scheduler
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: payflow-celery-beat
@@ -13,6 +18,7 @@ spec:
       labels:
         app: payflow-celery-beat
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: celery-beat
           image: ghcr.io/sayomiyori/payflow:latest
@@ -22,7 +28,7 @@ spec:
             - -A
             - app.workers.celery_app.celery_app
             - beat
-            - --loglevel=info
+            - --loglevel=INFO
           envFrom:
             - configMapRef:
                 name: payflow-config
@@ -30,8 +36,8 @@ spec:
                 name: payflow-secret
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: 50m
+              memory: 128Mi
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: 250m
+              memory: 256Mi

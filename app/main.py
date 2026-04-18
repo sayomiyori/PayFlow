@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -6,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from starlette.requests import Request
+from starlette.responses import Response
 
 from app.api.routers import analytics, auth, health, payments, protected, webhooks
 from app.core.config import get_settings
@@ -18,7 +20,7 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     Lifespan — это код который выполняется при старте и остановке приложения.
     Заменяет устаревшие @app.on_event("startup") / ("shutdown").
@@ -69,7 +71,10 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router)
 
     @app.middleware("http")
-    async def inject_tenant_context(request: Request, call_next):
+    async def inject_tenant_context(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header.split(" ", 1)[1].strip()

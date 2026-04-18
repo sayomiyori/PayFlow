@@ -3,11 +3,14 @@ kind: Ingress
 metadata:
   name: payflow-api
   namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-api
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - api.payflow.example.com

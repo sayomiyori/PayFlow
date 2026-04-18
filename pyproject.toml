@@ -72,5 +72,15 @@ disable_error_code = ["call-arg", "misc", "no-redef"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+# Порог 80% в CI для кода API/ядра; долгоживущие worker-процессы покрываются интеграционными/ручными прогонами.
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/infrastructure/clickhouse/*",
+    "app/workers/clickhouse_consumer.py",
+    "app/workers/outbox_worker.py",
+    "app/workers/reconciliation_worker.py",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

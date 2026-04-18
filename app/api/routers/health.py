@@ -1,5 +1,8 @@
+from typing import Any, cast
+
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
+from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +14,7 @@ settings = get_settings()
 
 
 @router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)):
+async def health_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     """
     Health check endpoint.
 
@@ -36,7 +39,10 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     # Check Redis
     try:
-        redis_client = aioredis.from_url(settings.redis_url)
+        redis_client = cast(
+            Redis,
+            aioredis.from_url(settings.redis_url),  # type: ignore[no-untyped-call]
+        )
         await redis_client.ping()
         await redis_client.aclose()
         checks["redis"] = "ok"

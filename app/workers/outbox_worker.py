@@ -125,6 +125,6 @@ async def process_outbox_batch() -> int:
     return total_published
 
 
-@celery_app.task(name="app.workers.outbox_worker.publish_pending_outbox_events")
+@celery_app.task(name="app.workers.outbox_worker.publish_pending_outbox_events")  # type: ignore[untyped-decorator]
 def publish_pending_outbox_events() -> int:
     return asyncio.run(process_outbox_batch())

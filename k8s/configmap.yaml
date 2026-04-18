@@ -3,12 +3,15 @@ kind: ConfigMap
 metadata:
   name: payflow-config
   namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow
 data:
   ENVIRONMENT: "production"
   ACCESS_TOKEN_EXPIRE_MINUTES: "15"
   REFRESH_TOKEN_EXPIRE_DAYS: "30"
-  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-  CLICKHOUSE_HOST: "clickhouse"
+  RECONCILIATION_STUCK_SECONDS: "600"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.payflow.svc.cluster.local:9092"
+  CLICKHOUSE_HOST: "clickhouse.payflow.svc.cluster.local"
   CLICKHOUSE_PORT: "9000"
   CLICKHOUSE_DB: "payflow_analytics"
   YUKASSA_SHOP_ID: "replace-with-shop-id"

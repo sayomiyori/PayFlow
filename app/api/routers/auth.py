@@ -57,7 +57,7 @@ class TokenResponse(BaseModel):
 async def register(
     request: RegisterRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> RegisterResponse:
     """
     Register a new merchant
 
@@ -122,7 +122,7 @@ async def register(
 async def login(
     request: LoginRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> TokenResponse:
     """
     Taking JWT token
 

@@ -1,0 +1,18 @@
+# [ЧТО] Kustomize: фиксированный порядок ресурсов при `kubectl apply -k k8s/`.
+# [ПОЧЕМУ] При `apply -f k8s/` файлы применяются по имени; namespace мог оказаться после Deployment.
+# [ОСТОРОЖНО] Меняйте image в overlays или через `kubectl set image` / CI, не правьте тег в git вслепую.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: payflow
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - api-service.yaml
+  - api-deployment.yaml
+  - celery-worker-deployment.yaml
+  - celery-beat-deployment.yaml
+  - hpa.yaml
+  - api-ingress.yaml

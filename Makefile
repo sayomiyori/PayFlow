@@ -28,7 +28,7 @@ dev:
 lint:
 	ruff check app tests
 	ruff format --check app tests
-	mypy -p app
+	mypy --strict -p app
 
 # Автоматически исправить стиль кода
 format:
@@ -66,7 +66,7 @@ migrate-history:
 	alembic history --verbose
 
 k8s-deploy:
-	kubectl apply -f k8s/
+	kubectl apply -k k8s/
 
 k8s-status:
 	kubectl get all -n payflow

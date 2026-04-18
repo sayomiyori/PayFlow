@@ -32,8 +32,11 @@ jobs:
       - name: Ruff check
         run: ruff check app tests
 
-      - name: Mypy (package mode)
-        run: mypy -p app
+      - name: Ruff format (check only)
+        run: ruff format --check app tests
+
+      - name: Mypy (strict)
+        run: mypy --strict -p app
 
   test:
     runs-on: ubuntu-latest
@@ -89,7 +92,7 @@ jobs:
       - name: Wait for Kafka broker
         run: sleep 15
 
-      - name: Run tests with coverage gate
+      - name: Run tests with coverage gate (>= 80%)
         env:
           DATABASE_URL: postgresql+asyncpg://payflow:payflow@localhost:5432/payflow_test
           DATABASE_URL_SYNC: postgresql+psycopg2://payflow:payflow@localhost:5432/payflow_test
@@ -102,7 +105,7 @@ jobs:
           YUKASSA_SHOP_ID: ci-shop
           YUKASSA_SECRET_KEY: ci-yukassa-secret
           YUKASSA_WEBHOOK_SECRET: ci-webhook-secret
-        run: pytest -v --cov=app --cov-report=term-missing --cov-fail-under=60
+        run: pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
 
   build:
     runs-on: ubuntu-latest
@@ -149,7 +152,7 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Deploy manifests
+      - name: Deploy manifests (Kustomize)
         env:
           KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
         run: |
@@ -159,4 +162,4 @@ jobs:
           fi
           mkdir -p "${HOME}/.kube"
           echo "${KUBE_CONFIG_B64}" | base64 -d > "${HOME}/.kube/config"
-          kubectl apply -f k8s/
+          kubectl apply -k k8s/
