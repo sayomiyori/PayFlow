@@ -168,7 +168,7 @@ on: push main | pull_request
        +-------------+
        |    test     |  services: Postgres, Redis, Kafka
        |             |  pytest --cov=app --cov-fail-under=80
-       +------+------+  (см. [tool.coverage.run].omit: ClickHouse sink + long-running workers)
+       +------+------+  (покрытие по всему `app/`: unit + integration, порог 80%)
               |
               v
        +-------------+

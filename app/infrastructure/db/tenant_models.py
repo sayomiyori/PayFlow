@@ -8,7 +8,6 @@ from sqlalchemy import Boolean, DateTime, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-
 class TenantBase(DeclarativeBase):
     """
     Separate Base for tenant-specific models
